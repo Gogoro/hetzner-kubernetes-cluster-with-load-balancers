@@ -1,0 +1,6 @@
+- name: Install and Configure the default Kubernetes Cluster settings (Same for all nodes)
+  hosts: kubernetesNodes
+  remote_user: root  
+  roles:
+  - common
+  - kubernetes_common

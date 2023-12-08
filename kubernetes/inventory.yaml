@@ -1,0 +1,22 @@
+mainMasterNode: master1.<domain> # Replace with your domain
+
+masterNodes:
+  hosts:
+    master1.<domain>: # Replace with your domain
+    master2.<domain>: # Replace with your domain
+    master3.<domain>: # Replace with your domain
+
+hetznerRootServers:
+  hosts:
+    worker1.<domain>: # Replace with your domain
+    worker2.<domain>: # Replace with your domain
+    worker3.<domain>: # Replace with your domain
+
+workerNodes:
+  children:
+    hetznerRootServers:
+
+kubernetesNodes:
+  children:
+    masterNodes:
+    workerNodes:

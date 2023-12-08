@@ -17,7 +17,7 @@ The first step is to set the new machine in rescue mode. This is done by logging
 6. Click "Add server to vSwitch".
 
 ## Step 3: Update the configuration 
-Make sure to update the `./host_vars` and `./inventory.yaml`.
+Make sure to update the `./host_vars` and `./inventory.yaml`. Make sure to change the filename in `./host_vars` to mach the name of the host in `./inventory.yaml`.
 
 ## Step 4: Install OS and configure
 > This playbook is only going to run if the machine is set to rescue mode. This is to make sure we don't accidentally run it on a machine that is in production doing labour.

@@ -1,0 +1,8 @@
+---
+- name: update APT packages
+  apt:
+    update_cache: yes
+
+- name: set timezone to Europe/Oslo
+  timezone:
+    name: Europe/Oslo

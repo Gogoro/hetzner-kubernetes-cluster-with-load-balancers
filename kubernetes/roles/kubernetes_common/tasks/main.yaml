@@ -1,0 +1,157 @@
+---
+- name: update APT packages
+  apt:
+    update_cache: yes
+
+
+
+##### Diable SWAP
+- name: disable SWAP (Kubeadm requirement)
+  shell: |
+    swapoff -a
+
+- name: disable SWAP in fstab (Kubeadm requirement)
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+
+
+##### Some basic packages
+- name: install APT Transport HTTPS
+  apt:
+    name: apt-transport-https
+    state: present
+
+- name: install CA Certificates
+  apt:
+    name: ca-certificates
+    state: present
+
+- name: install CA Certificates
+  apt:
+    name: etcd-client
+    state: present
+
+# This is only really needed by the workers because of Rook, but we install it everywhere
+- name: Install lvm2
+  apt:
+    name: lvm2
+    state: present
+
+##### Configure Containerd,  Kubernetes modules and sysctl params
+- name: create an empty file for the Containerd module
+  copy:
+    content: ""
+    dest: /etc/modules-load.d/containerd.conf
+    force: no
+
+- name: configure modules for Containerd
+  blockinfile:
+    path: /etc/modules-load.d/containerd.conf
+    block: |
+          overlay
+          br_netfilter
+
+- name: load overlay kernel module
+  modprobe:
+    name: overlay
+    state: present
+
+- name: load br_netfilter kernel module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: create an empty file for Kubernetes sysctl params
+  copy:
+    content: ""
+    dest: /etc/sysctl.d/99-kubernetes-cri.conf
+    force: no
+
+- name: configure sysctl params for Kubernetes
+  lineinfile:
+    path: /etc/sysctl.d/99-kubernetes-cri.conf
+    line: "{{ item }}"
+  with_items:
+    - 'net.bridge.bridge-nf-call-iptables  = 1'
+    - 'net.ipv4.ip_forward                 = 1'
+    - 'net.bridge.bridge-nf-call-ip6tables = 1'
+
+- name: apply sysctl params without reboot
+  command: sysctl --system
+
+
+##### Install Containerd
+- name: Add Docker GPG apt Key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker Repository
+  apt_repository:
+    repo: deb https://download.docker.com/linux/ubuntu focal stable
+    state: present
+
+- name: install Containerd
+  apt:
+    name: containerd.io
+    state: present
+
+- name: create Containerd directory
+  file:
+    path: /etc/containerd
+    state: directory
+
+- name: add Containerd configuration
+  shell: /usr/bin/containerd config default > /etc/containerd/config.toml
+
+- name: configuring the systemd cgroup driver for Containerd
+  lineinfile:
+    path: /etc/containerd/config.toml
+    regexp: '            SystemdCgroup = false'
+    line: '            SystemdCgroup = true'
+
+- name: enable the Containerd service and start it
+  systemd:
+    name: containerd
+    state: restarted
+    enabled: yes
+    daemon-reload: yes
+
+
+##### Add Kubernetes modules
+- name: add Kubernetes apt-key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: add Kubernetes' APT repository
+  apt_repository:
+    repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    filename: 'kubernetes'
+
+# Do we need update here? Maybe not?
+- name: install Kubelet
+  apt:
+    name: kubelet=1.28.2-00
+    state: present
+    update_cache: true
+
+- name: install Kubeadm
+  apt:
+    name: kubeadm=1.28.2-00
+    state: present
+
+- name: enable the Kubelet service, and enable it persistently
+  service:
+    name: kubelet
+    enabled: yes
+
+- name: install Kubectl
+  apt:
+    name: kubectl=1.28.2-00
+    state: present
+    force: yes # allow downgrades

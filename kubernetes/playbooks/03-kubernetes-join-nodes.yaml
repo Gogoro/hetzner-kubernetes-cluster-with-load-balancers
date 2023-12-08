@@ -1,0 +1,110 @@
+- name: Generate kubeadm join command on master
+  hosts: mainMasterNode
+  remote_user: root
+  tasks:
+    - name: Upload certificates and capture certificate-key
+      shell: kubeadm init phase upload-certs --upload-certs
+      register: upload_certs_result
+      run_once: true
+      ignore_errors: yes
+
+    - name: Generate join command for control-plane on the main master node
+      shell: kubeadm token create --print-join-command --ttl 2h --certificate-key {{ upload_certs_result.stdout_lines[-1] }}
+      register: join_master_command_result
+      run_once: true
+
+    - name: Generate join command for worker-nodes on the main master node
+      shell: kubeadm token create --print-join-command
+      register: join_worker_command_result
+      run_once: true
+
+    - name: Remove existing join command for MASTER node
+      local_action:
+        module: file
+        path: "/tmp/kubeadm_join_master.sh"
+        state: absent
+
+    - name: Save join command to join as a MASTER node to a local file
+      local_action:
+        module: copy
+        content: "{{ join_master_command_result.stdout }} --control-plane"
+        dest: "/tmp/kubeadm_join_master.sh" # Keeping it outside of the source code.
+
+    - name: Remove existing join command for WORKER node
+      local_action:
+        module: file
+        path: "/tmp/kubeadm_join_worker.sh"
+        state: absent
+
+    - name: Save join command to join as a WORKER node to a local file
+      local_action:
+        module: copy
+        content: "{{ join_worker_command_result.stdout }}"
+        dest: "/tmp/kubeadm_join_worker.sh" # Keeping it outside of the source code.
+
+
+- name: Join other masters and workers to cluster
+  hosts: masterNodes:workerNodes
+  remote_user: root
+  tasks:
+    - name: Check if node is already part of a Kubernetes cluster
+      shell: kubectl get nodes
+      ignore_errors: yes
+      register: check_node
+
+    - name: Fetch master join command from local file
+      local_action:
+        module: slurp
+        src: /tmp/kubeadm_join_master.sh
+      register: join_master_command
+      when: "'masterNodes' in group_names and check_node.rc != 0"
+
+    - name: Decode join master command
+      set_fact:
+        join_master_command_decoded: "{{ (join_master_command.content | b64decode) }}"
+      when: "'masterNodes' in group_names and check_node.rc != 0"
+
+    - name: Join MASTER nodes as master IF not already part of a Kubernetes cluster
+      shell: "{{ join_master_command_decoded }} --apiserver-advertise-address {{private_ip}}"
+      when: "'masterNodes' in group_names and check_node.rc != 0"
+
+    - name: Fetch worker join command from local file
+      local_action:
+        module: slurp
+        src: /tmp/kubeadm_join_worker.sh
+      register: join_worker_command
+      when: "'workerNodes' in group_names and check_node.rc != 0"
+
+    - name: Decode join worker command
+      set_fact:
+        join_worker_command_decoded: "{{ (join_worker_command.content | b64decode) }}"
+      when: "'workerNodes' in group_names and check_node.rc != 0"
+
+    - name: Join WORKER nodes as worker IF not already part of a Kubernetes cluster
+      shell: "{{ join_worker_command_decoded }}"
+      when: "'workerNodes' in group_names and check_node.rc != 0"
+
+    - name: Create /root/.kube directory if it does not exist
+      file:
+        path: /root/.kube
+        state: directory
+      when: "'masterNodes' in group_names and check_node.rc != 0"
+
+    - name: Setup Kubeconfig for Root User
+      command: cp /etc/kubernetes/admin.conf /root/.kube/config
+      args:
+        creates: /root/.kube/config
+      when: "'masterNodes' in group_names and check_node.rc != 0"
+
+
+- name: Label worker nodes as worker
+  hosts: mainMasterNode
+  remote_user: root
+  tasks:
+    - name: Get node without role label
+      shell: kubectl get nodes -o custom-columns=":metadata.name,:metadata.labels" | grep -v node-role.kubernetes | grep worker | awk '{print $1}'
+      register: worker_node_name
+
+    - name: Label worker nodes as worker
+      shell: kubectl label node {{ item }} node-role.kubernetes.io/worker=worker
+      with_items: "{{ worker_node_name.stdout}}"

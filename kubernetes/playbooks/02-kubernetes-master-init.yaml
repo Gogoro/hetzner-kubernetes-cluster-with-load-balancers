@@ -1,0 +1,33 @@
+- name: Install and Configure Kubernetes Master Node
+  hosts: mainMasterNode
+  remote_user: root
+
+  tasks:
+  - name: Initilize Kubernetes Master
+    shell: > 
+      kubeadm init --apiserver-advertise-address {{private_ip}} \
+      --control-plane-endpoint "{{floating_ip}}:6443" \
+      --pod-network-cidr 10.244.0.0/16 \
+      --upload-certs \
+      --apiserver-cert-extra-sans {{private_ip}} \
+      --v=5
+    args:
+      creates: /etc/kubernetes/admin.conf
+
+  - name: Create /root/.kube directory if it does not exist
+    file:
+      path: /root/.kube
+      state: directory
+
+  - name: Setup Kubeconfig for Root User
+    command: cp /etc/kubernetes/admin.conf /root/.kube/config
+    args:
+      creates: /root/.kube/config
+
+  - name: Apply Flannel Network Plugin
+    command: >
+      kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
+    environment:
+      KUBECONFIG: "/root/.kube/admin.conf"
+    args:
+      creates: /etc/cni/net.d/10-flannel.conflist

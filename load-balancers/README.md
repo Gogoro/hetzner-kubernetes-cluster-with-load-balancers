@@ -33,6 +33,8 @@ There are some variable files that you need to update before you can run the pla
 - `host_vars/lb1.yaml`
 - `host_vars/lb2.yaml`
 
+Make sure to change the filename in `./host_vars` to mach the name of the host in `./inventory.yaml`.
+
 > Make sure to create a new vault password file, and store the key for safe keeping. You will need it to run the playbook. More information can be found [here](https://docs.ansible.com/ansible/latest/vault_guide/index.html).
 
 ### Step 3: Run playbook
