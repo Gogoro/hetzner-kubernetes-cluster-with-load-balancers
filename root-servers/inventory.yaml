@@ -1,0 +1,6 @@
+hetznerRootServers:
+  hosts:
+    worker1.<domain>: # Change <domain> to your domain
+    worker2.<domain>: # Change <domain> to your domain
+    worker3.<domain>: # Change <domain> to your domain
+    worker4.<domain>: # Change <domain> to your domain

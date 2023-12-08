@@ -1,0 +1,7 @@
+os_drive: /dev/nvme0n1
+extra_drives:
+  - /dev/nvme1n1
+all_drives: "{{ [os_drive] + extra_drives }}"
+hostname: worker1
+networkCard: enp35s0 # Change this to your network card
+private_ip: 10.0.1.2

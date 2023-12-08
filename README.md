@@ -99,7 +99,7 @@ The first thing you need to do is to clone this repository to your local machine
 ### Prepare the servers and DNS
 The first thing you need to do is to set up the servers and install Ubuntu 22.04 on them. For the VM's this is done easily through the Hetzner Cloud Console. Make sure to:
 - Add your SSH key to the servers so you can access them later.
-- Add the servers to a private network so they can communicate with each other.
+- Add the servers to a private network (10.0.0.0/16) so they can communicate with each other.
 - Add the servers to a project so you can easily manage them.
 
 Do this for two Load Balancers and three Master Nodes.
@@ -123,8 +123,8 @@ Make sure to access your servers with ssh through the domain names, that way you
 ### Setup Load Balancers
 Navigate to [./load-balancers](./load-balancers/) and follow the instructions in the README.md file. This will set up your loda balancers so the first master node can be installed with the right routes later.
 
-### Prepare the Worker Nodes
-Navigate to [./worker-nodes](./worker-nodes/) and follow the instructions in the README.md file. This will set up your worker nodes so they are ready to be added to the cluster later.
+### Prepare the root servers
+Navigate to [./root-servers](./root-servers/) and follow the instructions in the README.md file. This will set up your worker nodes so they are ready to be added to the cluster later.
 
 ### Install Kubernetes
 Navigate to [./kubernetes](./kubernetes/) and follow the instructions in the README.md file. This will install Kubernetes on your master nodes and worker nodes.

@@ -1,0 +1,110 @@
+- name: Setup a Root server from scratch
+  hosts: hetznerRootServers
+  remote_user: root
+  tasks:
+  - name: Get the remote machine hostname
+    command: hostname
+    register: remote_hostname
+
+  - name: Check if the remote machine hostname is 'rescue'
+    assert:
+      that:
+        - "'rescue' == remote_hostname.stdout"
+      fail_msg: "Hostname is not 'rescue'. Exiting."
+
+  - name: Make sure the Raid is stoped
+    command: mdadm --stop /dev/md*
+    ignore_errors: yes
+
+  - name: Whipe the drives
+    command: wipefs -fa /dev/nvme*n1 # Change this to wipefs -fa /dev/sd* if you are using SATA drives
+    ignore_errors: yes
+
+  - name: Copy over the template installimage_config.cnf to the root folder
+    copy:
+      dest: /root/installimage_config.cnf
+      content: |
+        SWRAID 0
+
+        SWRAIDLEVEL 0
+
+        HOSTNAME {{ hostname }}
+
+        USE_KERNEL_MODE_SETTING yes
+
+        DRIVE1 {{ os_drive }}
+        PART    /boot     ext3    2G
+        PART    /         ext3    all
+
+        IMAGE /root/.oldroot/nfs/install/../images/Ubuntu-2204-jammy-amd64-base.tar.gz
+
+  - name: Run the installimage with our configuration
+    command: /root/.oldroot/nfs/install/installimage -a -c /root/installimage_config.cnf
+    register: out
+
+  - debug: var=out.stdout_lines
+
+  - name: Reboot host and wait for it to restart
+    reboot:
+      msg: "Reboot initiated by Ansible"
+      connect_timeout: 5
+      reboot_timeout: 600
+      pre_reboot_delay: 0
+      post_reboot_delay: 30
+      test_command: whoami
+    vars:
+      ansible_ssh_common_args: '-o StrictHostKeyChecking=no' # This is because it's going to change after the reboot
+
+  # Add vSwitch (This is not persitant, but adds the starting point files)
+  - name: Create a VLAN device
+    command: ip link add link {{ networkCard }} name {{ networkCard }}.4000 type vlan id 4000
+
+  - name: Set MTU for VLAN device
+    command: ip link set {{ networkCard }}.4000 mtu 1400
+
+  - name: Bring VLAN device up
+    command: ip link set dev {{ networkCard }}.4000 up
+
+  - name: Assign IP address and broadcast to VLAN device
+    command: ip addr add {{ private_ip }}/24 brd 10.0.1.255 dev {{ networkCard }}.4000
+
+  - name: Add Route via 10.0.1.1
+    command: ip route add 10.0.0.0/16 via 10.0.1.1
+
+  - name: Update /etc/netplan/01-netcfg.yaml for VLAN configuration
+    ansible.builtin.blockinfile:
+      path: /etc/netplan/01-netcfg.yaml
+      block: |2
+          vlans:
+            {{ networkCard }}.4000:
+              id: 4000
+              link: {{ networkCard }}
+              mtu: 1400
+              addresses:
+                - {{ private_ip }}/24
+              routes:
+                - to: "10.0.0.0/16"
+                  via: "10.0.1.1"
+      marker: "# {mark} ANSIBLE MANAGED BLOCK FOR VLAN"
+
+  - name: Apply the netplan configuration
+    command: netplan apply
+
+  - name: Add cron job to set MTU at reboot
+    cron:
+      name: "Set MTU for {{ networkCard }}.4000"
+      special_time: "reboot"
+      job: "sleep 10 && /sbin/ip link set mtu 1400 dev {{ networkCard }}.4000"
+
+  
+  # Make sure that it works to reboot into the system after everything is done
+  - name: Reboot host and wait for it to restart
+    reboot:
+      msg: "Reboot initiated by Ansible"
+      connect_timeout: 5
+      reboot_timeout: 600
+      pre_reboot_delay: 0
+      post_reboot_delay: 30
+      test_command: whoami
+    vars:
+      ansible_ssh_common_args: '-o StrictHostKeyChecking=no' # This is because it's going to change after the reboot
