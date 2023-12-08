@@ -1,0 +1,17 @@
+floating_ip_name: "name-of-floating-ip" # This is the same name as you see in the Hetzner Cloud Console
+floating_ip: "10.10.10.10" # The IP address of the floating IP
+master_ips:
+  master1: "10.0.0.4" # Private IP of the master1 node
+  master2: "10.0.0.5" # Private IP of the master2 node
+  master3: "10.0.0.6" # Private IP of the master3 node
+worker_ips:
+  worker1: "10.0.1.2" # Private IP of the worker1 node
+  worker2: "10.0.1.3" # Private IP of the worker2 node
+  worker3: "10.0.1.4" # Private IP of the worker3 node
+  worker4: "10.0.1.5" # Private IP of the worker4 node
+keepalived_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  123123123123123 # Replace this with your own password
+lb_failover_hcloud_token: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  123123123123123 # Replace this with your own password

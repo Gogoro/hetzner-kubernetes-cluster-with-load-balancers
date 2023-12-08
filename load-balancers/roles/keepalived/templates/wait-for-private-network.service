@@ -1,0 +1,9 @@
+[Unit]
+Description=Wait for Private Network Interface
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/wait-for-private-network.sh
+
+[Install]
+WantedBy=multi-user.target

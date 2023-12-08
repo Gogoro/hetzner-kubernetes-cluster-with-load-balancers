@@ -1,0 +1,4 @@
+loadBalancers:
+  hosts:
+    lb1.<domain>: # Change <domain> to your domain name
+    lb2.<domain>: # Change <domain> to your domain name

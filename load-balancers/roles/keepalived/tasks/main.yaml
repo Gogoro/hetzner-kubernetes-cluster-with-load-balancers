@@ -1,0 +1,31 @@
+---
+
+- name: Install keepalived
+  apt: name=keepalived state=present
+
+- name: Copy keepalived configuration file
+  template: src=keepalived.conf dest=/etc/keepalived/keepalived.conf
+  notify: restart keepalived
+
+- name: Copy failover.sh file
+  template: src=failover.sh dest=/etc/keepalived/failover.sh mode=0755
+  notify: restart keepalived
+
+# These steps are to make sure keepalived does not run before the Private IP is assigned to the machine
+- name: Copy over wait for network script
+  template: src=wait-for-private-network.sh dest=/usr/local/bin/wait-for-private-network.sh mode=0755
+
+- name: Copy over wait for network service
+  template: src=wait-for-private-network.service dest=/lib/systemd/system/wait-for-private-network.service
+
+- name: Copy over updated keepalived service
+  template: src=keepalived.service dest=/lib/systemd/system/keepalived.service
+
+- name: Reload systemctl deamon
+  shell: systemctl daemon-reload
+
+- name: Enable wait for network service
+  shell: systemctl enable wait-for-private-network.service
+
+- name: Restart Keepalived service
+  shell: systemctl restart keepalived.service

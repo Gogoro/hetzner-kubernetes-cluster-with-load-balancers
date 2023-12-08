@@ -1,0 +1,8 @@
+- name: Install and Configure HAProxy and Keepalived (Can be run mlutiple times to keep updated)
+  hosts: loadBalancers
+  remote_user: root
+  roles:
+  - common
+  - floating-ip
+  - haproxy
+  - keepalived

@@ -1,0 +1,5 @@
+---
+keepalived_unicast_src_ip: "10.0.0.2" # IP of the interface on the host
+keepalived_unicast_peer:  ["10.0.0.3"] # IP of the interface on the other host (lb2 in this case). Nb. this is a list, so you can add more than one IP here if you have more than two load balancers
+keepalived_state: "MASTER"
+keepalived_priority: "100"

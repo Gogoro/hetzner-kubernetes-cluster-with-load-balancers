@@ -1,0 +1,11 @@
+---
+- name: Install hcloud-ip
+  shell: |
+    wget -O /opt/hcloud-ip https://github.com/FootprintDev/hcloud-ip/releases/download/v0.0.1/hcloud-ip-linux64
+    chmod +x /opt/hcloud-ip
+
+- name: Add the Floating IP netplan config
+  template: src=60-floating-ip.yaml dest=/etc/netplan/60-floating-ip.yaml
+
+- name: Apply the Floating IP netplan config
+  shell: netplan apply

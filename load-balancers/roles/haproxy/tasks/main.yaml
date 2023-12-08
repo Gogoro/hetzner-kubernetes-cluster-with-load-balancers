@@ -1,0 +1,7 @@
+---
+- name: Install haproxy
+  apt: name=haproxy state=present
+
+- name: Copy haproxy configuration file
+  template: src=haproxy.cfg dest=/etc/haproxy/haproxy.cfg
+  notify: restart haproxy
